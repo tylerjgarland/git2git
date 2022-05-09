@@ -22,4 +22,4 @@
 - [ ] Add support for additional flags (archived, public, private, ... repositories)
 - [ ] Add support for other git hosting environments
 - [ ] Schedule Syncronization
-- [ ] 
+- [ ] Copy issues w/ content from one project to another
