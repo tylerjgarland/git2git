@@ -13,7 +13,7 @@
 * --github-token
 * --gitlab-token
 
-# TODO
+# Milestones
 
 - [ ] Copy all owned repositories from GitLab to GitHub
 - [ ] Copy all owned repositories from GitHub to GitLab
