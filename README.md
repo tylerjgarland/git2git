@@ -15,9 +15,11 @@
 
 # Milestones
 
-- [ ] Copy all owned repositories from GitLab to GitHub
-- [ ] Copy all owned repositories from GitHub to GitLab
-- [ ] Synchronize all owned repositories between GitHub and GitLab
+- [ ] Copy all owned, private repositories from GitLab to GitHub
+- [ ] Copy all owned, private repositories from GitHub to GitLab
+- [ ] Synchronize all owned, private repositories between GitHub and GitLab
 - [ ] Interactive mode where repositories can be selected
-- [ ] Add support for additional flags (archived, public, private, etc repositories)
+- [ ] Add support for additional flags (archived, public, private, ... repositories)
 - [ ] Add support for other git hosting environments
+- [ ] Schedule Syncronization
+- [ ] 
