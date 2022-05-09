@@ -9,7 +9,7 @@ import (
 func main() {
 	args := parseArguments(os.Args[1:])
 
-	GetRepositories(args.gitlabToken)
+	GetRepositories(args.GitlabToken)
 
 	fmt.Println(args)
 }
@@ -20,10 +20,10 @@ func parseArguments(arguments []string) (parsedArgs Arguments) {
 		splitArg := strings.Split(arg, " ")
 		switch splitArg[0] {
 		case "--gitlab-token":
-			parsedArgs.gitlabToken = splitArg[1]
+			parsedArgs.GitlabToken = splitArg[1]
 			break
 		case "--github-token":
-			parsedArgs.githubToken = splitArg[1]
+			parsedArgs.GithubToken = splitArg[1]
 			break
 		}
 	}
@@ -31,6 +31,6 @@ func parseArguments(arguments []string) (parsedArgs Arguments) {
 }
 
 type Arguments struct {
-	gitlabToken string
-	githubToken string
+	GitlabToken string
+	GithubToken string
 }
