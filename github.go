@@ -56,6 +56,44 @@ func GetGithubRepositories(token string) ([]GitRepository, bool) {
 	}).([]GitRepository), true
 }
 
+func MakeGithubRepository(token string, repositoryPtr *GitRepository) {
+	client := resty.New()
+
+	userResponse, err := client.R().
+		EnableTrace().
+		SetResult(GithubUser{}).
+		SetJSONEscapeHTML(false).
+		SetHeader("Authorization", fmt.Sprintf("token %s", token)).
+		SetQueryParams(map[string]string{
+			"access_token": token,
+		}).
+		Get("https://api.github.com/user")
+
+	userName := userResponse.Result().(*GithubUser).Login
+
+	repositoriesResponse, err := client.R().
+		EnableTrace().
+		SetResult(GithubRepository{}).
+		SetJSONEscapeHTML(false).
+		SetHeader("Authorization", fmt.Sprintf("token %s", token)).
+		SetBody(map[string]string{
+			"name":    repositoryPtr.Name,
+			"private": "true",
+		}).
+		Post("https://api.github.com/user/repos")
+
+	fmt.Println(repositoriesResponse.String())
+
+	if err != nil {
+		panic(err)
+	}
+
+	// //git clone
+	// result := repositoriesResponse.Result().(*GithubRepositoryCollection)
+
+	repositoryPtr.HTTPUrlToRepo = fmt.Sprintf("https://%s@github.com/%s/%s.git", token, userName, repositoryPtr.Name)
+}
+
 type GithubUser struct {
 	Login string
 }
