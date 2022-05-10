@@ -9,7 +9,7 @@ import (
 func main() {
 	args := parseArguments(os.Args[1:])
 
-	GetRepositories(args.GitlabToken)
+	Git2Git(args.GitlabToken, args.GithubToken)
 
 	fmt.Println(args)
 }

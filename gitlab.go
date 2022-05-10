@@ -4,11 +4,23 @@ import (
 	"fmt"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/thoas/go-funk"
 )
 
-func GetRepositories(token string) {
+func GetGitlabRepositories(token string) ([]GitRepository, bool) {
 
 	client := resty.New()
+
+	userResp, err := client.R().
+		EnableTrace().
+		SetResult(GitlabUser{}).
+		SetJSONEscapeHTML(false).
+		SetQueryParams(map[string]string{
+			"private_token": token,
+		}).
+		Get("https://gitlab.com/api/v4/user")
+
+	userName := userResp.Result().(*GitlabUser).Username
 
 	resp, err := client.R().
 		EnableTrace().
@@ -24,23 +36,27 @@ func GetRepositories(token string) {
 		panic(err)
 	}
 
-	// var objmap []map[string]json.Number
-	// err = json.Unmarshal(resp.Body(), &objmap)
-
 	result := resp.Result().(*[]GitlabRepository)
 
-	fmt.Println(result)
-	// fmt.Println(ok)
+	//git clone `https://oauth2:TOKEN@github.com/username/repo.git`
+	// git clone
 
-	// for _, repo := range  {
-	// 	repositoriesResponse = append(repositoriesResponse, repo)
-	// }
+	return funk.Map(*result, func(repository GitlabRepository) GitRepository {
+		return GitRepository{
+			Name: repository.Name,
+			// HTTPUrlToRepo: fmt.Sprintf("https://oauth2:%s@github.com/%s/%s.git", token, userName, repository.Name),
+			HTTPUrlToRepo: fmt.Sprintf("https://%s:%s@gitlab.com/%s/%s.git", userName, token, userName, repository.Name),
+			Archived:      repository.Archived,
+		}
+	}).([]GitRepository), true
+}
+
+type GitlabUser struct {
+	Username string
 }
 
 type GitlabRepository struct {
-	ID            float64
-	Name          string
+	Name          string `json:"path"`
 	HTTPUrlToRepo string `json:"http_url_to_repo"`
 	Archived      bool
-	Visibility    string
 }
