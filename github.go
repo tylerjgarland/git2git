@@ -2,15 +2,24 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/thoas/go-funk"
 )
 
-func GetGithubRepositories(token string) ([]GitRepository, bool) {
+var userName string
 
+func GetGithubUsername(token string) string {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Default().Print(err)
+			panic("error getting github username")
+		}
+	}()
 	client := resty.New()
 
+	//Grab username for repository search.
 	userResponse, err := client.R().
 		EnableTrace().
 		SetResult(GithubUser{}).
@@ -21,7 +30,34 @@ func GetGithubRepositories(token string) ([]GitRepository, bool) {
 		}).
 		Get("https://api.github.com/user")
 
-	userName := userResponse.Result().(*GithubUser).Login
+	if err != nil {
+		panic("error getting github username: " + err.Error())
+	}
+
+	if userName == "" {
+		userName = userResponse.Result().(*GithubUser).Login
+	}
+
+	return userName
+
+}
+
+func GetGithubRepositories(token string) ([]GitRepository, bool) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Default().Print(err)
+			panic("error getting github repositories")
+		}
+	}()
+
+	client := resty.New()
+
+	userName := GetGithubUsername(token)
+
+	if userName == "" {
+		log.Default().Print("invalid github token")
+		panic("invalid github token")
+	}
 
 	repositoriesResponse, err := client.R().
 		EnableTrace().
@@ -34,19 +70,18 @@ func GetGithubRepositories(token string) ([]GitRepository, bool) {
 		Get("https://api.github.com/search/repositories")
 
 	if err != nil {
-		panic(err)
+		panic("error getting github repositories:" + err.Error())
 	}
 
 	result := repositoriesResponse.Result().(*GithubRepositoryCollection)
 
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Println("panic occurred:", err)
-		}
-	}()
+	//No repositories found.
+	if len(result.Items) == 0 {
+		log.Default().Print("No repositories found.")
+		return nil, false
+	}
 
 	//https://stackoverflow.com/questions/42148841/github-clone-with-oauth-access-token
-
 	return funk.Map(result.Items, func(repository GithubRepository) GitRepository {
 		return GitRepository{
 			Name:          repository.FullName,
@@ -56,22 +91,23 @@ func GetGithubRepositories(token string) ([]GitRepository, bool) {
 	}).([]GitRepository), true
 }
 
-func MakeGithubRepository(token string, repositoryPtr *GitRepository) {
+func CreateGithubRepository(token string, repositoryPtr *GitRepository) bool {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Default().Print(err)
+			panic("error creating github repository")
+		}
+	}()
+
 	client := resty.New()
 
-	userResponse, err := client.R().
-		EnableTrace().
-		SetResult(GithubUser{}).
-		SetJSONEscapeHTML(false).
-		SetHeader("Authorization", fmt.Sprintf("token %s", token)).
-		SetQueryParams(map[string]string{
-			"access_token": token,
-		}).
-		Get("https://api.github.com/user")
+	userName := GetGithubUsername(token)
 
-	userName := userResponse.Result().(*GithubUser).Login
+	if userName == "" {
+		panic("invalid github token")
+	}
 
-	repositoriesResponse, err := client.R().
+	_, err := client.R().
 		EnableTrace().
 		SetResult(GithubRepository{}).
 		SetJSONEscapeHTML(false).
@@ -82,16 +118,13 @@ func MakeGithubRepository(token string, repositoryPtr *GitRepository) {
 		}).
 		Post("https://api.github.com/user/repos")
 
-	fmt.Println(repositoriesResponse.String())
-
 	if err != nil {
-		panic(err)
+		return false
 	}
 
-	// //git clone
-	// result := repositoriesResponse.Result().(*GithubRepositoryCollection)
-
 	repositoryPtr.HTTPUrlToRepo = fmt.Sprintf("https://%s@github.com/%s/%s.git", token, userName, repositoryPtr.Name)
+
+	return true
 }
 
 type GithubUser struct {

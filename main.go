@@ -7,27 +7,28 @@ import (
 )
 
 func main() {
-	args := parseArguments(os.Args[1:])
+	gitTokens := parseTokens(os.Args[1:])
 
-	Git2Git(args.GitlabToken, args.GithubToken)
+	//POC: Only Gitlab to Github export available.
+	Gitlab2Github(gitTokens.GitlabToken, gitTokens.GithubToken)
 
-	fmt.Println(args)
+	fmt.Println(gitTokens)
 }
 
-func parseArguments(arguments []string) (parsedArgs Arguments) {
-	parsedArgs = Arguments{}
+func parseTokens(arguments []string) (parsedTokens Arguments) {
+	parsedTokens = Arguments{}
 	for _, arg := range arguments {
 		splitArg := strings.Split(arg, " ")
 		switch splitArg[0] {
 		case "--gitlab-token":
-			parsedArgs.GitlabToken = splitArg[1]
+			parsedTokens.GitlabToken = splitArg[1]
 			break
 		case "--github-token":
-			parsedArgs.GithubToken = splitArg[1]
+			parsedTokens.GithubToken = splitArg[1]
 			break
 		}
 	}
-	return parsedArgs
+	return parsedTokens
 }
 
 type Arguments struct {
