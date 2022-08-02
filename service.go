@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/thoas/go-funk"
 )
 
 func Gitlab2Github(gitlabToken string, githubToken string) {
@@ -22,17 +23,17 @@ func Gitlab2Github(gitlabToken string, githubToken string) {
 	wg.Wait()
 
 	gitlabRepos := <-gitlabReposChan
-	// githubRepos := <-githubReposChan
+	githubRepos := <-githubReposChan
 
-	// gitReps, _ := funk.Difference(
-	// 	funk.Map(gitlabRepos, func(item GitRepository) string { return item.Name }),
-	// 	funk.Map(githubRepos, func(item GitRepository) string { return item.Name }),
-	// )
+	gitReps, _ := funk.Difference(
+		funk.Map(gitlabRepos, func(item GitRepository) string { return item.Name }),
+		funk.Map(githubRepos, func(item GitRepository) string { return item.Name }),
+	)
+
+	downloadRepos := funk.Filter(gitlabRepos, func(item GitRepository) bool { return funk.Contains(gitReps, item.Name) }).([]GitRepository)
 
 	//Limit to 3 concurrent git clones.
-	concurrencyLimit := make(chan struct{}, 1)
-
-	downloadRepos := gitlabRepos
+	concurrencyLimit := make(chan struct{}, 3)
 
 	wg.Add(len(downloadRepos))
 
@@ -67,7 +68,10 @@ func CloneRepository(repo GitRepository, gitHubToken string, wgPtr *sync.WaitGro
 
 	os.Mkdir(repositoryDownloadDir, 0755)
 
-	defer os.Remove(repositoryDownloadDir)
+	defer func() {
+		wgPtr.Done()
+		os.Remove(repositoryDownloadDir)
+	}()
 
 	gitRepo, err := git.PlainClone(repositoryDownloadDir, false, &git.CloneOptions{
 		URL: repo.HTTPUrlToRepo,
@@ -92,7 +96,7 @@ func CloneRepository(repo GitRepository, gitHubToken string, wgPtr *sync.WaitGro
 
 	fmt.Println("Created repository in GitHub")
 
-	remote, err := gitRepo.Remote("origin")
+	remote, _ := gitRepo.Remote("origin")
 
 	remote.Config().URLs = []string{repo.HTTPUrlToRepo}
 
