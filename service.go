@@ -7,10 +7,12 @@ import (
 	"sync"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/thoas/go-funk"
 )
 
 func Gitlab2Github(gitlabToken string, githubToken string) {
+	os.RemoveAll("./gitrepos")
+	os.Mkdir("./gitrepos", 0755)
+
 	var wg sync.WaitGroup
 	var gitlabReposChan, githubReposChan chan []GitRepository = make(chan []GitRepository, 1), make(chan []GitRepository, 1)
 
@@ -20,17 +22,17 @@ func Gitlab2Github(gitlabToken string, githubToken string) {
 	wg.Wait()
 
 	gitlabRepos := <-gitlabReposChan
-	githubRepos := <-githubReposChan
+	// githubRepos := <-githubReposChan
 
-	gitReps, _ := funk.Difference(
-		funk.Map(gitlabRepos, func(item GitRepository) string { return item.Name }),
-		funk.Map(githubRepos, func(item GitRepository) string { return item.Name }),
-	)
+	// gitReps, _ := funk.Difference(
+	// 	funk.Map(gitlabRepos, func(item GitRepository) string { return item.Name }),
+	// 	funk.Map(githubRepos, func(item GitRepository) string { return item.Name }),
+	// )
 
 	//Limit to 3 concurrent git clones.
-	concurrencyLimit := make(chan struct{}, 3)
+	concurrencyLimit := make(chan struct{}, 1)
 
-	downloadRepos := gitReps.([]GitRepository)
+	downloadRepos := gitlabRepos
 
 	wg.Add(len(downloadRepos))
 

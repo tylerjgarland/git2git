@@ -107,6 +107,19 @@ func CreateGithubRepository(token string, repositoryPtr *GitRepository) bool {
 		panic("invalid github token")
 	}
 
+	repositoryExists, _ := client.R().
+		EnableTrace().
+		SetResult(GithubRepository{}).
+		SetJSONEscapeHTML(false).
+		SetHeader("Authorization", fmt.Sprintf("token %s", token)).
+		SetPathParam("user", userName).
+		SetPathParam("repo", repositoryPtr.Name).
+		Get("https://api.github.com/repos/{user}/{repo}")
+
+	if repositoryExists.StatusCode() != 404 {
+		return false
+	}
+
 	_, err := client.R().
 		EnableTrace().
 		SetResult(GithubRepository{}).
