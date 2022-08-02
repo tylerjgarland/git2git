@@ -79,7 +79,7 @@ func CloneRepository(repo GitRepository, gitHubToken string, wgPtr *sync.WaitGro
 
 	if err != nil {
 		log.Default().Print(err)
-		fmt.Printf("Failed to clone repository: %s", repo.Name)
+		fmt.Printf("Failed to clone repository: %s : %s", err.Error(), repo.Name)
 		fmt.Println()
 		return false
 	}
