@@ -1,4 +1,4 @@
-module github.com/tylerjgarland/gitlab-to-github
+module github.com/tylerjgarland/git2git
 
 go 1.18
 

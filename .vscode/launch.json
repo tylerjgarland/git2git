@@ -7,8 +7,10 @@
 		{
 			"name": "Launch Package",
 			"args": [
-				"--gitlab-token 12345",
-				"--github-token 12345",
+				"--gitlab-token",
+				"glpat-6-dUwMsCvwGxqA9FZjcR",
+				"--github-token",
+				"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"
 			],
 			"type": "go",
 			"request": "launch",

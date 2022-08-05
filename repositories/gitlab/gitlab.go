@@ -1,30 +1,32 @@
-package main
+package gitlab
 
 import (
 	"fmt"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/thoas/go-funk"
+
+	"github.com/tylerjgarland/git2git/repositories"
 )
 
-func GetGitlabRepositories(token string) ([]GitRepository, bool) {
+func GetRepositories(token string) ([]repositories.GitRepository, bool) {
 
 	client := resty.New()
 
 	userResp, err := client.R().
 		EnableTrace().
-		SetResult(GitlabUser{}).
+		SetResult(gitlabUser{}).
 		SetJSONEscapeHTML(false).
 		SetQueryParams(map[string]string{
 			"private_token": token,
 		}).
 		Get("https://gitlab.com/api/v4/user")
 
-	userName := userResp.Result().(*GitlabUser).Username
+	userName := userResp.Result().(*gitlabUser).Username
 
 	resp, err := client.R().
 		EnableTrace().
-		SetResult([]GitlabRepository{}).
+		SetResult([]gitlabRepository{}).
 		SetJSONEscapeHTML(false).
 		SetQueryParams(map[string]string{
 			"private_token": token,
@@ -36,26 +38,26 @@ func GetGitlabRepositories(token string) ([]GitRepository, bool) {
 		panic(err)
 	}
 
-	result := resp.Result().(*[]GitlabRepository)
+	result := resp.Result().(*[]gitlabRepository)
 
 	//git clone `https://oauth2:TOKEN@github.com/username/repo.git`
 	// git clone
 
-	return funk.Map(*result, func(repository GitlabRepository) GitRepository {
-		return GitRepository{
+	return funk.Map(*result, func(repository gitlabRepository) repositories.GitRepository {
+		return repositories.GitRepository{
 			Name: repository.Name,
 			// HTTPUrlToRepo: fmt.Sprintf("https://oauth2:%s@github.com/%s/%s.git", token, userName, repository.Name),
 			HTTPUrlToRepo: fmt.Sprintf("https://%s:%s@gitlab.com/%s/%s.git", userName, token, userName, repository.Name),
 			Archived:      repository.Archived,
 		}
-	}).([]GitRepository), true
+	}).([]repositories.GitRepository), true
 }
 
-type GitlabUser struct {
+type gitlabUser struct {
 	Username string
 }
 
-type GitlabRepository struct {
+type gitlabRepository struct {
 	Name          string `json:"path"`
 	HTTPUrlToRepo string `json:"http_url_to_repo"`
 	Archived      bool

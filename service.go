@@ -8,6 +8,10 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/thoas/go-funk"
+
+	"github.com/tylerjgarland/git2git/repositories"
+	"github.com/tylerjgarland/git2git/repositories/github"
+	"github.com/tylerjgarland/git2git/repositories/gitlab"
 )
 
 func Gitlab2Github(gitlabToken string, githubToken string) {
@@ -15,10 +19,10 @@ func Gitlab2Github(gitlabToken string, githubToken string) {
 	os.Mkdir("./gitrepos", 0755)
 
 	var wg sync.WaitGroup
-	var gitlabReposChan, githubReposChan chan []GitRepository = make(chan []GitRepository, 1), make(chan []GitRepository, 1)
+	var gitlabReposChan, githubReposChan chan []repositories.GitRepository = make(chan []repositories.GitRepository, 1), make(chan []repositories.GitRepository, 1)
 
-	go GetRepositories(gitlabToken, wg, gitlabReposChan, GetGitlabRepositories)
-	go GetRepositories(githubToken, wg, githubReposChan, GetGithubRepositories)
+	go GetRepositories(gitlabToken, wg, gitlabReposChan, gitlab.GetRepositories)
+	go GetRepositories(githubToken, wg, githubReposChan, github.GetRepositories)
 
 	wg.Wait()
 
@@ -26,11 +30,11 @@ func Gitlab2Github(gitlabToken string, githubToken string) {
 	githubRepos := <-githubReposChan
 
 	gitReps, _ := funk.Difference(
-		funk.Map(gitlabRepos, func(item GitRepository) string { return item.Name }),
-		funk.Map(githubRepos, func(item GitRepository) string { return item.Name }),
+		funk.Map(gitlabRepos, func(item repositories.GitRepository) string { return item.Name }),
+		funk.Map(githubRepos, func(item repositories.GitRepository) string { return item.Name }),
 	)
 
-	downloadRepos := funk.Filter(gitlabRepos, func(item GitRepository) bool { return funk.Contains(gitReps, item.Name) }).([]GitRepository)
+	downloadRepos := funk.Filter(gitlabRepos, func(item repositories.GitRepository) bool { return funk.Contains(gitReps, item.Name) }).([]repositories.GitRepository)
 
 	//Limit to 3 concurrent git clones.
 	concurrencyLimit := make(chan struct{}, 3)
@@ -43,7 +47,7 @@ func Gitlab2Github(gitlabToken string, githubToken string) {
 
 			defer func() { <-concurrencyLimit }()
 
-			go CloneRepository(repo, githubToken, &wg)
+			go cloneRepository(repo, githubToken, &wg, github.CreateRepository)
 		}()
 	}
 
@@ -51,11 +55,11 @@ func Gitlab2Github(gitlabToken string, githubToken string) {
 	fmt.Println("Sync complete")
 }
 
-func GetRepositories(token string, waitGroup sync.WaitGroup, reposChannel chan []GitRepository, function func(token string) ([]GitRepository, bool)) {
+func GetRepositories(token string, waitGroup sync.WaitGroup, reposChannel chan []repositories.GitRepository, getRepositories func(token string) ([]repositories.GitRepository, bool)) {
 	defer waitGroup.Done()
 
 	waitGroup.Add(1)
-	repos, ok := function(token)
+	repos, ok := getRepositories(token)
 
 	if !ok {
 		panic("error getting repositories")
@@ -63,7 +67,7 @@ func GetRepositories(token string, waitGroup sync.WaitGroup, reposChannel chan [
 	reposChannel <- repos
 }
 
-func CloneRepository(repo GitRepository, gitHubToken string, wgPtr *sync.WaitGroup) bool {
+func cloneRepository(repo repositories.GitRepository, gitHubToken string, wgPtr *sync.WaitGroup, createRepositoryAsync func(token string, repoPtr *repositories.GitRepository) bool) bool {
 	repositoryDownloadDir := fmt.Sprintf("./gitrepos/%s", repo.Name)
 
 	os.Mkdir(repositoryDownloadDir, 0755)
@@ -87,7 +91,7 @@ func CloneRepository(repo GitRepository, gitHubToken string, wgPtr *sync.WaitGro
 	fmt.Printf("Downloaded: %s", repo.Name)
 	fmt.Println()
 
-	ok := CreateGithubRepository(gitHubToken, &repo)
+	ok := createRepositoryAsync(gitHubToken, &repo)
 
 	if !ok {
 		fmt.Printf("Failed to create repository in GitHub: %s", repo.Name)
@@ -110,8 +114,6 @@ func CloneRepository(repo GitRepository, gitHubToken string, wgPtr *sync.WaitGro
 	}
 
 	fmt.Println("Pushed repository to GitHub")
-
-	wgPtr.Done()
 
 	fmt.Printf("Synced: %s", repo.Name)
 	fmt.Println()
