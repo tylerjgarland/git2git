@@ -1,4 +1,6 @@
-# Pre-Release.
+# Pre-Release
+
+The intention of this is app is to eventually allow the synchronization of git repositories between GitHub, GitLab, BitBucket, and others.
 
 # How To Use
 
