@@ -34,4 +34,3 @@ Only copies git history. Issues and other metadata aren't copied.
 - [ ] Schedule Syncronization
 - [ ] Copy issues w/ content from one project to another
 - [ ] Zip up repositories and copy to backup location (Google Drive, etc)
-- [ ] 
