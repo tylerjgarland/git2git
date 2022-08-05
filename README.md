@@ -1,4 +1,4 @@
-# PoC in Progress. NOT USABLE
+# Pre-Release.
 
 # How To Use
 
@@ -13,9 +13,18 @@
 * --github-token
 * --gitlab-token
 
+# Latest Release
+Initial working release of git2git. Copies repositories from GitLab to GitHub.
+
+Some caveats:
+
+Only copies repositories that aren't empty.
+Only copies repositories that don't have same-named repositories in GitHub.
+Only copies git history. Issues and other metadata aren't copied.
+
 # Milestones
 
-- [ ] Copy all owned, private repositories from GitLab to GitHub
+- [X] Copy all owned, private repositories from GitLab to GitHub
 - [ ] Copy all owned, private repositories from GitHub to GitLab
 - [ ] Synchronize all owned, private repositories between GitHub and GitLab
 - [ ] Synchronize latest changes from repositories to the next
