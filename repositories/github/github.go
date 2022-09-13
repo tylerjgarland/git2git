@@ -3,6 +3,7 @@ package github
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/thoas/go-funk"
@@ -50,12 +51,13 @@ func GetRepositories(token string) ([]repositories.GitRepository, bool) {
 		log.Default().Print("No repositories found.")
 		return nil, false
 	}
-
+	//https: //oauth-key-goes-here@github.com/username/repo.git
 	//https://stackoverflow.com/questions/42148841/github-clone-with-oauth-access-token
+	//"https://github.com/tylerjgarland/vocal-voter-web.git"
 	return funk.Map(result.Items, func(repository githubRepository) repositories.GitRepository {
 		return repositories.GitRepository{
 			Name:          repository.FullName,
-			HTTPUrlToRepo: repository.CloneUrl,
+			HTTPUrlToRepo: strings.Replace(repository.CloneUrl, "https://", "https://"+token+"@", 1),
 			Archived:      repository.Archived,
 		}
 	}).([]repositories.GitRepository), true
