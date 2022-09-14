@@ -7,46 +7,51 @@ import (
 	"sync"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/thoas/go-funk"
 
 	"github.com/tylerjgarland/git2git/repositories"
-	"github.com/tylerjgarland/git2git/repositories/github"
-	"github.com/tylerjgarland/git2git/repositories/gitlab"
 )
 
-func Gitlab2Github(gitlabToken string, githubToken string, gitLabLeft bool) {
+func SyncRepositories(originToken string, destinationToken string, origin func(token string) ([]repositories.GitRepository, bool), target func(token string) ([]repositories.GitRepository, bool), createRepositoryAsync func(token string, repoPtr *repositories.GitRepository) string) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Default().Print(err)
+			log.Default().Print("Failed to sync repositories. Exiting.")
+		}
+	}()
+
 	os.RemoveAll("./gitrepos")
 	os.Mkdir("./gitrepos", 0755)
 
 	var wg sync.WaitGroup
-	var gitlabReposChan, githubReposChan chan []repositories.GitRepository = make(chan []repositories.GitRepository, 1), make(chan []repositories.GitRepository, 1)
+	var originReposChan, targetReposChan chan []repositories.GitRepository = make(chan []repositories.GitRepository, 1), make(chan []repositories.GitRepository, 1)
 
-	go GetRepositories(gitlabToken, wg, gitlabReposChan, gitlab.GetRepositories)
-	go GetRepositories(githubToken, wg, githubReposChan, github.GetRepositories)
+	go GetRepositories(originToken, wg, originReposChan, origin)
+	go GetRepositories(destinationToken, wg, targetReposChan, target)
 
 	wg.Wait()
 
 	var copyFromRepos []repositories.GitRepository
-	var copyToRepos []repositories.GitRepository
+	// var copyToRepos []repositories.GitRepository
 
-	if gitLabLeft {
-		copyFromRepos = <-gitlabReposChan
-		copyToRepos = <-githubReposChan
-	} else {
-		copyFromRepos = <-githubReposChan
-		copyToRepos = <-gitlabReposChan
+	copyFromRepos = <-originReposChan
+	// copyToRepos = <-targetReposChan
+
+	if len(copyFromRepos) == 0 {
+		log.Default().Print("No repositories to copy.")
+		return
 	}
 
 	var reposToDownload []repositories.GitRepository
 
-	workingGitRepos, _ := funk.Difference(
-		funk.Map(copyFromRepos, func(item repositories.GitRepository) string { return item.Name }),
-		funk.Map(copyToRepos, func(item repositories.GitRepository) string { return item.Name }),
-	)
+	// workingGitRepos, _ := funk.Difference(
+	// 	funk.Map(copyFromRepos, func(item repositories.GitRepository) string { return item.Name }),
+	// 	funk.Map(copyToRepos, func(item repositories.GitRepository) string { return item.Name }),
+	// )
 
 	// var stringReposToDownload []string
 
-	reposToDownload = funk.Filter(copyFromRepos, func(item repositories.GitRepository) bool { return funk.Contains(workingGitRepos, item.Name) }).([]repositories.GitRepository)
+	reposToDownload = copyFromRepos
+	// reposToDownload = funk.Filter(copyFromRepos, func(item repositories.GitRepository) bool { return funk.Contains(workingGitRepos, item.Name) }).([]repositories.GitRepository)
 
 	//Limit to 3 concurrent git clones.
 	concurrencyLimit := make(chan struct{}, 1)
@@ -59,11 +64,8 @@ func Gitlab2Github(gitlabToken string, githubToken string, gitLabLeft bool) {
 
 			defer func() { <-concurrencyLimit }()
 
-			if gitLabLeft {
-				go syncRepository(repo, githubToken, &wg, github.CreateRepository)
-			} else {
-				go syncRepository(repo, gitlabToken, &wg, gitlab.CreateRepository)
-			}
+			go syncRepository(repo, destinationToken, &wg, createRepositoryAsync)
+
 		}()
 	}
 
@@ -75,16 +77,13 @@ func GetRepositories(token string, waitGroup sync.WaitGroup, reposChannel chan [
 	defer waitGroup.Done()
 
 	waitGroup.Add(1)
-	repos, ok := getRepositories(token)
+	repos, _ := getRepositories(token)
 
-	if !ok {
-		panic("error getting repositories")
-	}
 	reposChannel <- repos
 }
 
-func syncRepository(repo repositories.GitRepository, gitHubToken string, wgPtr *sync.WaitGroup, createRepositoryAsync func(token string, repoPtr *repositories.GitRepository) bool) bool {
-	repositoryDownloadDir := fmt.Sprintf("./gitrepos/%s", repo.Name)
+func syncRepository(repo repositories.GitRepository, gitHubToken string, wgPtr *sync.WaitGroup, createRepositoryAsync func(token string, repoPtr *repositories.GitRepository) string) bool {
+	repositoryDownloadDir := fmt.Sprintf("./gitrepostester/%s", repo.Name)
 
 	os.Mkdir(repositoryDownloadDir, 0755)
 
@@ -107,25 +106,22 @@ func syncRepository(repo repositories.GitRepository, gitHubToken string, wgPtr *
 	fmt.Printf("Downloaded: %s", repo.Name)
 	fmt.Println()
 
-	ok := createRepositoryAsync(gitHubToken, &repo)
+	pushURL := createRepositoryAsync(gitHubToken, &repo)
 
-	if !ok {
-		fmt.Printf("Failed to create repository in GitHub: %s", repo.Name)
+	if pushURL == "" {
+		fmt.Printf("Repo failed to create: %s", repo.Name)
 		return false
 	}
-
-	fmt.Println("Created repository in GitHub")
-
 	remote, _ := gitRepo.Remote("origin")
 
-	remote.Config().URLs = []string{repo.HTTPUrlToRepo}
+	remote.Config().URLs = []string{pushURL}
 
 	err = remote.Push(&git.PushOptions{
 		RemoteName: "origin",
 	})
 
 	if err != nil {
-		fmt.Printf("Failed to push repository to GitHub: %s", repo.Name)
+		fmt.Printf("Failed to push repository: %s", repo.Name)
 		return false
 	}
 

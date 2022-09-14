@@ -54,7 +54,7 @@ func GetRepositories(token string) ([]repositories.GitRepository, bool) {
 	}).([]repositories.GitRepository), true
 }
 
-func CreateRepository(token string, repositoryPtr *repositories.GitRepository) bool {
+func CreateRepository(token string, repositoryPtr *repositories.GitRepository) string {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Default().Print(err)
@@ -94,7 +94,7 @@ func CreateRepository(token string, repositoryPtr *repositories.GitRepository) b
 		if funk.Any(res, func(repository gitlabRepository) bool {
 			return repository.Name == repositoryPtr.Name
 		}) {
-			return false
+			return fmt.Sprintf("https://%s:%s@gitlab.com/%s/%s.git", userName, token, userName, repositoryPtr.Name)
 		}
 	}
 
@@ -113,12 +113,10 @@ func CreateRepository(token string, repositoryPtr *repositories.GitRepository) b
 		Post("https://gitlab.com/api/v4/projects")
 
 	if err != nil {
-		return false
+		return ""
 	}
 
-	repositoryPtr.HTTPUrlToRepo = fmt.Sprintf("https://%s:%s@gitlab.com/%s/%s.git", userName, token, userName, repositoryPtr.Name)
-
-	return true
+	return fmt.Sprintf("https://%s:%s@gitlab.com/%s/%s.git", userName, token, userName, repositoryPtr.Name)
 }
 
 type gitlabUser struct {

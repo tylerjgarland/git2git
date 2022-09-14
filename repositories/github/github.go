@@ -11,8 +11,6 @@ import (
 	"github.com/tylerjgarland/git2git/repositories"
 )
 
-var userName string
-
 func GetRepositories(token string) ([]repositories.GitRepository, bool) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -63,7 +61,7 @@ func GetRepositories(token string) ([]repositories.GitRepository, bool) {
 	}).([]repositories.GitRepository), true
 }
 
-func CreateRepository(token string, repositoryPtr *repositories.GitRepository) bool {
+func CreateRepository(token string, repositoryPtr *repositories.GitRepository) string {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Default().Print(err)
@@ -89,7 +87,7 @@ func CreateRepository(token string, repositoryPtr *repositories.GitRepository) b
 		Get("https://api.github.com/repos/{user}/{repo}")
 
 	if repositoryExists.StatusCode() != 404 {
-		return false
+		return fmt.Sprintf("https://%s@github.com/%s/%s.git", token, userName, repositoryPtr.Name)
 	}
 
 	_, err := client.R().
@@ -104,12 +102,10 @@ func CreateRepository(token string, repositoryPtr *repositories.GitRepository) b
 		Post("https://api.github.com/user/repos")
 
 	if err != nil {
-		return false
+		return ""
 	}
 
-	repositoryPtr.HTTPUrlToRepo = fmt.Sprintf("https://%s@github.com/%s/%s.git", token, userName, repositoryPtr.Name)
-
-	return true
+	return fmt.Sprintf("https://%s@github.com/%s/%s.git", token, userName, repositoryPtr.Name)
 }
 
 func getGithubUsername(token string) string {
@@ -119,28 +115,23 @@ func getGithubUsername(token string) string {
 			panic("error getting github username")
 		}
 	}()
-	if userName == "" {
-		client := resty.New()
+	client := resty.New()
 
-		//Grab username for repository search.
-		userResponse, err := client.R().
-			EnableTrace().
-			SetResult(githubUser{}).
-			SetJSONEscapeHTML(false).
-			SetHeader("Authorization", fmt.Sprintf("token %s", token)).
-			SetQueryParams(map[string]string{
-				"access_token": token,
-			}).
-			Get("https://api.github.com/user")
+	//Grab username for repository search.
+	userResponse, err := client.R().
+		EnableTrace().
+		SetResult(githubUser{}).
+		SetJSONEscapeHTML(false).
+		SetHeader("Authorization", fmt.Sprintf("token %s", token)).
+		SetQueryParams(map[string]string{
+			"access_token": token,
+		}).
+		Get("https://api.github.com/user")
 
-		if err != nil {
-			panic("error getting github username: " + err.Error())
-		}
-
-		userName = userResponse.Result().(*githubUser).Login
+	if err != nil {
+		panic("error getting github username: " + err.Error())
 	}
-	return userName
-
+	return userResponse.Result().(*githubUser).Login
 }
 
 type githubUser struct {
