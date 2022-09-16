@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 
 	"github.com/tylerjgarland/git2git/repositories"
 )
@@ -50,9 +51,11 @@ func SyncRepositories(originToken string, destinationToken string, origin func(t
 
 	// var stringReposToDownload []string
 
-	reposToDownload = copyFromRepos
+	// reposToDownload = funk.Filter(copyFromRepos, func(item repositories.GitRepository) bool {
+	// 	return item.Name == "machinations"
+	// }).([]repositories.GitRepository)
 	// reposToDownload = funk.Filter(copyFromRepos, func(item repositories.GitRepository) bool { return funk.Contains(workingGitRepos, item.Name) }).([]repositories.GitRepository)
-
+	reposToDownload = copyFromRepos
 	//Limit to 3 concurrent git clones.
 	concurrencyLimit := make(chan struct{}, 1)
 
@@ -83,7 +86,7 @@ func GetRepositories(token string, waitGroup sync.WaitGroup, reposChannel chan [
 }
 
 func syncRepository(repo repositories.GitRepository, gitHubToken string, wgPtr *sync.WaitGroup, createRepositoryAsync func(token string, repoPtr *repositories.GitRepository) string) bool {
-	repositoryDownloadDir := fmt.Sprintf("./gitrepostester/%s", repo.Name)
+	repositoryDownloadDir := fmt.Sprintf("./gitrepos/%s", repo.Name)
 
 	os.Mkdir(repositoryDownloadDir, 0755)
 
@@ -96,9 +99,21 @@ func syncRepository(repo repositories.GitRepository, gitHubToken string, wgPtr *
 		URL: repo.HTTPUrlToRepo,
 	})
 
+	opts := &git.FetchOptions{
+		RefSpecs: []config.RefSpec{"refs/*:refs/*", "HEAD:refs/heads/HEAD"},
+	}
+
 	if err != nil {
 		log.Default().Print(err)
 		fmt.Printf("Failed to clone repository: %s : %s", err.Error(), repo.Name)
+		fmt.Println()
+		return false
+	}
+
+	remote, _ := gitRepo.Remote("origin")
+
+	if err := remote.Fetch(opts); err != nil {
+		fmt.Printf("Repo failed to create: %s", repo.Name)
 		fmt.Println()
 		return false
 	}
@@ -110,22 +125,36 @@ func syncRepository(repo repositories.GitRepository, gitHubToken string, wgPtr *
 
 	if pushURL == "" {
 		fmt.Printf("Repo failed to create: %s", repo.Name)
+		fmt.Println()
 		return false
 	}
-	remote, _ := gitRepo.Remote("origin")
 
-	remote.Config().URLs = []string{pushURL}
+	remote, err = gitRepo.CreateRemote(&config.RemoteConfig{
+		Name: "Destination",
+		URLs: []string{pushURL},
+	})
+
+	if err != nil {
+		fmt.Printf("Failed to create new remote: %s", repo.Name)
+		fmt.Println()
+		fmt.Println(err)
+		return false
+	}
+
+	refs := make([]config.RefSpec, 0)
+	refs = append(refs, config.RefSpec(fmt.Sprintf("%s:%s", "*", "*")))
 
 	err = remote.Push(&git.PushOptions{
-		RemoteName: "origin",
+		RemoteName: "Destination",
+		RefSpecs:   refs,
 	})
 
 	if err != nil {
 		fmt.Printf("Failed to push repository: %s", repo.Name)
+		fmt.Println()
+		fmt.Println(err)
 		return false
 	}
-
-	fmt.Println("Pushed repository to GitHub")
 
 	fmt.Printf("Synced: %s", repo.Name)
 	fmt.Println()
