@@ -7,7 +7,7 @@ The intention of this is app is to eventually allow the synchronization of git r
 * Download appropriate binary for your OS
 * Generate GitLab token with X permissions
 * Generate GitHub token with X permissions
-* `git2git --target-token 1234 --origin-token 5678 --target gitlab --origin github
+* `git2git --target-token 1234 --origin-token 5678 --target gitlab --origin github`
 
 
 # Supported Flags
