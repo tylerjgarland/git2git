@@ -16,6 +16,6 @@ jobs:
     - run: ./build.sh
     - uses: ncipollo/release-action@v1
       with:
-        artifacts: "builds/linux/git2git,builds/mac/git2git,builds/windows/git2git.exe"
-        bodyFile: "body.md"
+        artifacts: "builds/linux/git2git-linux-amd64,builds/mac/git2git-mac-amd64,builds/windows/git2git.exe"
+        bodyFile: "readme.md"
         token: ${{ secrets.GITHUB_TOKEN }}
