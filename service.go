@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/go-git/go-git/v5"
@@ -150,10 +151,17 @@ func syncRepository(repo repositories.GitRepository, gitHubToken string, wgPtr *
 	})
 
 	if err != nil {
-		fmt.Printf("Failed to push repository: %s", repo.Name)
-		fmt.Println()
-		fmt.Println(err)
-		return false
+		errorString := err.Error()
+		if errorString == "authorization failed" {
+			fmt.Printf("Not allowed to access repository. Check permissions.: %s", repo.Name)
+			fmt.Println()
+			return false
+		} else if !strings.Contains(errorString, "deny updating a hidden ref") {
+			fmt.Printf("Failed to push repository: %s", repo.Name)
+			fmt.Println()
+			fmt.Println(err)
+			return false
+		}
 	}
 
 	fmt.Printf("Synced: %s", repo.Name)
