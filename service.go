@@ -9,8 +9,11 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	"github.com/thoas/go-funk"
 
 	"github.com/tylerjgarland/git2git/repositories"
+
+	"github.com/AlecAivazis/survey/v2"
 )
 
 func SyncRepositories(originToken string, destinationToken string, origin func(token string) ([]repositories.GitRepository, bool), target func(token string) ([]repositories.GitRepository, bool), createRepositoryAsync func(token string, repoPtr *repositories.GitRepository) string) {
@@ -21,8 +24,8 @@ func SyncRepositories(originToken string, destinationToken string, origin func(t
 		}
 	}()
 
-	os.RemoveAll("./gitrepos")
-	os.Mkdir("./gitrepos", 0755)
+	os.RemoveAll("./tmp")
+	os.Mkdir("./tmp", 0755)
 
 	var wg sync.WaitGroup
 	var originReposChan, targetReposChan chan []repositories.GitRepository = make(chan []repositories.GitRepository, 1), make(chan []repositories.GitRepository, 1)
@@ -32,33 +35,21 @@ func SyncRepositories(originToken string, destinationToken string, origin func(t
 
 	wg.Wait()
 
-	var copyFromRepos []repositories.GitRepository
-	// var copyToRepos []repositories.GitRepository
-
-	copyFromRepos = <-originReposChan
-	// copyToRepos = <-targetReposChan
+	copyFromRepos := <-originReposChan
 
 	if len(copyFromRepos) == 0 {
 		log.Default().Print("No repositories to copy.")
 		return
 	}
 
-	var reposToDownload []repositories.GitRepository
+	names := Checkboxes("Please select which repositories to sync", funk.Map(copyFromRepos, func(r repositories.GitRepository) string {
+		return r.Name
+	}).([]string))
 
-	// workingGitRepos, _ := funk.Difference(
-	// 	funk.Map(copyFromRepos, func(item repositories.GitRepository) string { return item.Name }),
-	// 	funk.Map(copyToRepos, func(item repositories.GitRepository) string { return item.Name }),
-	// )
+	reposToDownload := funk.Filter(copyFromRepos, func(item repositories.GitRepository) bool { return funk.Contains(names, item.Name) }).([]repositories.GitRepository)
 
-	// var stringReposToDownload []string
-
-	// reposToDownload = funk.Filter(copyFromRepos, func(item repositories.GitRepository) bool {
-	// 	return item.Name == "machinations"
-	// }).([]repositories.GitRepository)
-	// reposToDownload = funk.Filter(copyFromRepos, func(item repositories.GitRepository) bool { return funk.Contains(workingGitRepos, item.Name) }).([]repositories.GitRepository)
-	reposToDownload = copyFromRepos
 	//Limit to 3 concurrent git clones.
-	concurrencyLimit := make(chan struct{}, 1)
+	concurrencyLimit := make(chan struct{}, 3)
 
 	wg.Add(len(reposToDownload))
 
@@ -77,6 +68,17 @@ func SyncRepositories(originToken string, destinationToken string, origin func(t
 	fmt.Println("Sync complete")
 }
 
+func Checkboxes(label string, opts []string) []string {
+	res := []string{}
+	prompt := &survey.MultiSelect{
+		Message: label,
+		Options: opts,
+	}
+	survey.AskOne(prompt, &res)
+
+	return res
+}
+
 func GetRepositories(token string, waitGroup sync.WaitGroup, reposChannel chan []repositories.GitRepository, getRepositories func(token string) ([]repositories.GitRepository, bool)) {
 	defer waitGroup.Done()
 
@@ -87,7 +89,7 @@ func GetRepositories(token string, waitGroup sync.WaitGroup, reposChannel chan [
 }
 
 func syncRepository(repo repositories.GitRepository, gitHubToken string, wgPtr *sync.WaitGroup, createRepositoryAsync func(token string, repoPtr *repositories.GitRepository) string) bool {
-	repositoryDownloadDir := fmt.Sprintf("./gitrepos/%s", repo.Name)
+	repositoryDownloadDir := fmt.Sprintf("./tmp/%s", repo.Name)
 
 	os.Mkdir(repositoryDownloadDir, 0755)
 

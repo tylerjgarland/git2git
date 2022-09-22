@@ -36,33 +36,33 @@ func main() {
 	case "github-github":
 		SyncRepositories(parsedArguments.OriginToken, parsedArguments.TargetToken, github.GetRepositories, github.GetRepositories, github.CreateRepository)
 	case "gitlab-gitlab":
-		SyncRepositories(parsedArguments.OriginToken, parsedArguments.TargetToken, github.GetRepositories, gitlab.GetRepositories, gitlab.CreateRepository)
+		SyncRepositories(parsedArguments.OriginToken, parsedArguments.TargetToken, gitlab.GetRepositories, gitlab.GetRepositories, gitlab.CreateRepository)
 	default:
 		fmt.Println("Combination " + parsedArguments.Origin + "-" + parsedArguments.Target + " not supported.")
 	}
 
 }
 
-func parseTokens(arguments []string) (parsedTokens Arguments) {
-	parsedTokens = Arguments{}
+func parseTokens(arguments []string) (parsedArgs Arguments) {
+	parsedArgs = Arguments{}
 	for index, arg := range arguments {
 		switch arg {
 		case "--origin-token":
-			parsedTokens.OriginToken = arguments[index+1]
+			parsedArgs.OriginToken = arguments[index+1]
 		case "--target-token":
-			parsedTokens.TargetToken = arguments[index+1]
+			parsedArgs.TargetToken = arguments[index+1]
 		case "--target":
-			parsedTokens.Target = arguments[index+1]
+			parsedArgs.Target = arguments[index+1]
 		case "--origin":
-			parsedTokens.Origin = arguments[index+1]
+			parsedArgs.Origin = arguments[index+1]
 		case "-h":
-			parsedTokens.Help = true
+			parsedArgs.Help = true
 		case "--help":
-			parsedTokens.Help = true
+			parsedArgs.Help = true
 		}
 
 	}
-	return parsedTokens
+	return parsedArgs
 }
 
 type Arguments struct {

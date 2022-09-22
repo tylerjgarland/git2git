@@ -34,9 +34,8 @@ Only copies git history. Issues and other metadata aren't copied.
 - [X] Copy all owned, private repositories from GitHub to GitLab
 - [X] Copy all owned, private repositories from GitLab to GitLab
 - [X] Copy all owned, private repositories from GitHub to GitHub
-- [ ] Synchronize all owned, private repositories between GitHub and GitLab
-- [ ] Synchronize latest changes from repositories to the next
-- [ ] Interactive mode where repositories can be selected
+- [X] Synchronize latest changes from repositories to the next
+- [X] Interactive mode where repositories can be selected
 - [ ] Add support for additional flags (archived, public, private, ... repositories)
 - [ ] Add support for other git hosting environments
 - [ ] Schedule Syncronization
