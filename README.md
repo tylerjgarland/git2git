@@ -5,11 +5,11 @@ The intention of this is app is to eventually allow the synchronization of git r
 # How To Use
 
 1. Download appropriate binary for your OS
-2. Generate GitLab token with X permissions
+2. Generate GitLab token with permissions:
 
 ![image](https://user-images.githubusercontent.com/34039134/191862977-0cedcde6-d730-4e70-a3e4-59ddc2ebe6a9.png)
 
-3. Generate GitHub token with X permissions
+3. Generate GitHub token with permissions:
 
 ![image](https://user-images.githubusercontent.com/34039134/191863169-865c6a2b-5a05-4d26-a0f1-64a1bcd172a3.png)
 4. `git2git --target-token 1234 --origin-token 5678 --target gitlab --origin github`
